@@ -1,0 +1,28 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Playfair Display", ui-serif, Georgia, serif;
+  
+  /* MHJ.NZ Brand Colors (App UI) */
+  --color-brand-beige: #F4F1EA;
+  --color-brand-dark: #2C2C2C;
+  --color-brand-green: #3A4F41;
+  --color-brand-brown: #8C6A5D;
+
+  /* Card News Template Colors (matching screenshots) */
+  --color-card-bg: #F5EFE6;
+  --color-card-bg-alt: #E8DCCB;
+  --color-card-dark: #4A3C31;
+  --color-card-accent: #D4A373;
+  --color-card-muted: #C2B2A3;
+
+  /* New Infographic & Abstract Colors */
+  --color-shape-peach: #D8A48F;
+  --color-shape-sage: #8A9A86;
+  --color-shape-blue: #B5C6C4;
+  --color-bold-green: #0F4C5C;
+  --color-bold-yellow: #E5A937;
+}
