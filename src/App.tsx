@@ -34,6 +34,7 @@ interface Slide {
   fontColor?: string;
   bgColor?: string;
   accentIcon?: 'squiggle' | 'leaf' | 'koru' | 'fern' | 'kiwi' | 'mountain' | 'nzmap' | 'southerncross' | 'book' | 'sun' | 'blob';
+  fontSizeScale?: number; // Scale factor for text size to prevent overflow
 }
 
 const IMAGE_FILTERS = [
@@ -196,6 +197,7 @@ const NZ_ACCENTS = [
 
 export default function App() {
   const [inputType, setInputType] = useState<InputSourceType>('text');
+  const [aspectRatio, setAspectRatio] = useState<'4/5' | '1/1'>('4/5');
   const [input, setInput] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -231,7 +233,7 @@ Instructions:
 3. Preserve the user's text exactly. If there are multiple languages (e.g., English and Korean), combine them nicely in the 'title', 'subtitle', or 'content' fields. ALWAYS separate different languages with a newline character (\\n) so they appear on separate lines.
 4. Assign the most appropriate visual layout, fontTheme, textBackground, globalTexture, and bgColor for each slide based on its content.
 5. CRITICAL: For 'imagePlaceholder', you MUST generate a highly relevant, specific, and unique single-word noun based on the slide's exact content (e.g., "passport", "classroom", "coffee", "laptop", "mountain", "cityscape"). DO NOT use generic words like "image", "background", "photo", "slide", "abstract", or "texture". Ensure a DIFFERENT keyword is used for EVERY slide to guarantee visual diversity. The keyword should represent a tangible object or specific scene related to the text.
-6. CRITICAL: Ensure a consistent application of visual styles (fontTheme, textBackground, globalTexture, bgColor) across ALL generated slides to maintain a cohesive visual narrative. Avoid abrupt style changes between slides unless a specific slide's content strongly warrants a deviation.
+6. CRITICAL STYLE CONSISTENCY: You MUST ensure a consistent application of visual styles (fontTheme, textBackground, globalTexture, bgColor) across ALL generated slides to maintain a cohesive visual narrative. Pick ONE primary fontTheme (e.g., 'modern') and ONE globalTexture for the entire deck and stick to them. Avoid abrupt style changes between slides to maintain brand identity and flow, unless a specific slide's content strongly warrants a deviation.
 7. CRITICAL OVERFLOW PREVENTION: Card layouts have limited visual capacity. If the text for a single point or section is too long (e.g., more than 120-150 characters total), you MUST automatically split the content into multiple consecutive slides. For example, if point 2 is too long, create two slides with stepNumber "2 (1/2)" and "2 (2/2)" to prevent text overflow. You are allowed to generate up to 20 slides to accommodate this. Ensure you dynamically adjust the total number of slides created based on content length.
 
 Generate a JSON array of slide objects. Each object must conform to this interface:
@@ -280,11 +282,14 @@ Rules:
 - Generate 4 to 20 slides.
 - The first slide should usually be a cover layout.
 - The last slide should usually be a CTA or summary.
+-- COPYWRITING & FORMATTING: Act as an expert social media copywriter. Refine, summarize, and punch up the user's text. Extract catchy titles and concise bullet points. Ensure the text fits beautifully on the cards—not too sparse, not overflowing.
+- DO NOT use any emojis in the text. The user will add them manually if needed.
+- INFOGRAPHICS: If the user provides data, comparisons, or statistics, actively use the 'info-stat-grid', 'info-bar-chart', or 'info-donut-chart' layouts. For 'info-stat-grid' and 'info-bar-chart', provide an array of strings in the 'content' field (e.g., ["Value1", "Label1", "Value2", "Label2"]).
 - Choose layouts that best fit the content.
 - Provide concise, impactful text for titles and content.
 - If the input contains multiple languages, include both in the 'title', 'subtitle', or 'content' fields, but ALWAYS separate them with a newline character (\n) so they appear on separate lines.
 - CRITICAL: For 'imagePlaceholder', you MUST generate a highly relevant, specific, and unique single-word noun based on the slide's exact content (e.g., "passport", "classroom", "coffee", "laptop", "mountain", "cityscape"). DO NOT use generic words like "image", "background", "photo", "slide", "abstract", or "texture". Ensure a DIFFERENT keyword is used for EVERY slide to guarantee visual diversity. The keyword should represent a tangible object or specific scene related to the text.
-- CRITICAL: Ensure a consistent application of visual styles (fontTheme, textBackground, globalTexture, bgColor) across ALL generated slides to maintain a cohesive visual narrative. Avoid abrupt style changes between slides unless a specific slide's content strongly warrants a deviation.
+- CRITICAL STYLE CONSISTENCY: You MUST ensure a consistent application of visual styles (fontTheme, textBackground, globalTexture, bgColor) across ALL generated slides to maintain a cohesive visual narrative. Pick ONE primary fontTheme (e.g., 'modern') and ONE globalTexture for the entire deck and stick to them. Avoid abrupt style changes between slides to maintain brand identity and flow, unless a specific slide's content strongly warrants a deviation.
 - CRITICAL OVERFLOW PREVENTION: Card layouts have limited visual capacity. If the text for a single point or section is too long (e.g., more than 120-150 characters total), you MUST automatically split the content into multiple consecutive slides. For example, if point 2 is too long, create two slides with stepNumber "2 (1/2)" and "2 (2/2)" to prevent text overflow. You are allowed to generate up to 20 slides to accommodate this. Ensure you dynamically adjust the total number of slides created based on content length.
 - Return ONLY the raw JSON array. Do not include markdown formatting like \`\`\`json.
 `;
@@ -352,7 +357,24 @@ Rules:
       
       for (let i = 0; i < slideElements.length; i++) {
         const el = slideElements[i] as HTMLElement;
-        const dataUrl = await htmlToImage.toPng(el, { quality: 1.0, pixelRatio: 2 });
+        
+        // Calculate scale to make the output exactly 1080px wide
+        // This preserves the on-screen responsive layout while exporting at high resolution
+        const targetWidth = 1080;
+        const currentWidth = el.offsetWidth;
+        const scale = targetWidth / currentWidth;
+        
+        const dataUrl = await htmlToImage.toPng(el, { 
+          quality: 1.0, 
+          pixelRatio: scale,
+          style: {
+            transform: 'scale(1)',
+            transformOrigin: 'top left',
+            margin: '0',
+            padding: '0'
+          }
+        });
+        
         const base64Data = dataUrl.replace(/^data:image\/png;base64,/, "");
         zip.file(`slide_${i + 1}.png`, base64Data, { base64: true });
       }
@@ -421,6 +443,25 @@ Rules:
               >
                 <LayoutTemplate className="w-4 h-4" /> Manual
               </button>
+            </div>
+
+            {/* Aspect Ratio Selection */}
+            <div className="mb-6">
+              <label className="block text-sm font-semibold text-brand-dark/80 mb-3">Aspect Ratio</label>
+              <div className="flex gap-4">
+                <label className={`flex-1 flex flex-col items-center justify-center p-4 rounded-xl border-2 cursor-pointer transition-all ${aspectRatio === '4/5' ? 'border-brand-green bg-brand-green/5 text-brand-dark' : 'border-brand-dark/10 hover:border-brand-dark/30 text-brand-dark/60'}`}>
+                  <input type="radio" name="aspect" value="4/5" checked={aspectRatio === '4/5'} onChange={() => setAspectRatio('4/5')} className="hidden" />
+                  <div className="w-8 h-10 border-2 border-current rounded-sm mb-2 opacity-80"></div>
+                  <span className="font-medium text-sm">4:5</span>
+                  <span className="text-[10px] opacity-70 mt-1">Instagram Trend</span>
+                </label>
+                <label className={`flex-1 flex flex-col items-center justify-center p-4 rounded-xl border-2 cursor-pointer transition-all ${aspectRatio === '1/1' ? 'border-brand-green bg-brand-green/5 text-brand-dark' : 'border-brand-dark/10 hover:border-brand-dark/30 text-brand-dark/60'}`}>
+                  <input type="radio" name="aspect" value="1/1" checked={aspectRatio === '1/1'} onChange={() => setAspectRatio('1/1')} className="hidden" />
+                  <div className="w-10 h-10 border-2 border-current rounded-sm mb-2 opacity-80"></div>
+                  <span className="font-medium text-sm">1:1</span>
+                  <span className="text-[10px] opacity-70 mt-1">Classic Square</span>
+                </label>
+              </div>
             </div>
 
             <form onSubmit={handleGenerate} className="space-y-5">
@@ -507,7 +548,7 @@ Rules:
                     </button>
                   </div>
                 )}
-                {slides && <span className="text-sm font-semibold bg-brand-green/10 text-brand-green px-3 py-1 rounded-full">10 Slides Generated</span>}
+                {slides && <span className="text-sm font-semibold bg-brand-green/10 text-brand-green px-3 py-1 rounded-full">{slides.length} Slides Generated</span>}
               </div>
             </div>
             
@@ -542,6 +583,8 @@ Rules:
                     key={slide.id} 
                     slide={slide} 
                     index={index} 
+                    totalSlides={slides.length}
+                    aspectRatio={aspectRatio}
                     onUpdate={(updates) => updateSlide(slide.id, updates)}
                   />
                 ))}
@@ -554,7 +597,7 @@ Rules:
   );
 }
 
-function SlidePreview({ slide, index, onUpdate }: { slide: Slide; index: number; onUpdate: (u: Partial<Slide>) => void; key?: React.Key }) {
+function SlidePreview({ slide, index, totalSlides, onUpdate, aspectRatio }: { slide: Slide; index: number; totalSlides: number; onUpdate: (u: Partial<Slide>) => void; aspectRatio: '4/5' | '1/1'; key?: React.Key }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isEditingText, setIsEditingText] = useState(false);
   const [isLayoutModalOpen, setIsLayoutModalOpen] = useState(false);
@@ -699,26 +742,26 @@ function SlidePreview({ slide, index, onUpdate }: { slide: Slide; index: number;
 
       case 'step-list':
         return (
-          <div className="flex flex-col h-full p-10 relative overflow-hidden">
-            <div className="relative mb-8 shrink-0">
-              <span className="absolute -top-6 -left-4 font-serif text-8xl text-[var(--color-card-accent)] opacity-40 leading-none select-none">
+          <div className="flex flex-col h-full p-8 relative overflow-hidden">
+            <div className="relative mb-6 shrink-0">
+              <span className="absolute -top-6 -left-4 font-serif text-7xl text-[var(--color-card-accent)] opacity-40 leading-none select-none">
                 {slide.stepNumber !== undefined ? slide.stepNumber : index}
               </span>
-              <h3 className={`${getFontThemeClass('title')} text-4xl text-[var(--color-card-dark)] mt-4 relative z-10 tracking-tight whitespace-pre-line leading-snug`}>
+              <h3 className={`${getFontThemeClass('title')} text-2xl text-[var(--color-card-dark)] mt-4 relative z-10 tracking-tight whitespace-pre-line leading-tight`}>
                 {slide.title}
               </h3>
             </div>
             <div className="flex-1 overflow-hidden relative z-10">
-              <p className={`${getFontThemeClass('body')} text-base leading-[1.8] text-[var(--color-card-dark)] opacity-85 whitespace-pre-line mb-8`}>
+              <p className={`${getFontThemeClass('body')} text-base leading-[1.7] text-[var(--color-card-dark)] opacity-85 whitespace-pre-line mb-6`}>
                 {slide.content}
               </p>
             </div>
             {displayImage && (
-              <div className="mt-auto self-end w-40 h-40 shrink-0 rounded-full overflow-hidden border-[6px] border-[var(--color-card-bg)] shadow-xl bg-black/5 relative z-10">
+              <div className="mt-auto self-end w-32 h-32 shrink-0 rounded-full overflow-hidden border-[6px] border-[var(--color-card-bg)] shadow-xl bg-black/5 relative z-10">
                 <img src={displayImage} alt="Step" className="w-full h-full object-cover" referrerPolicy="no-referrer" style={{ filter: filterStyle }} />
               </div>
             )}
-            <ArrowRight className="absolute bottom-12 left-10 w-6 h-6 text-[var(--color-card-dark)] opacity-40" />
+            <ArrowRight className="absolute bottom-10 left-8 w-6 h-6 text-[var(--color-card-dark)] opacity-40" />
           </div>
         );
 
@@ -730,17 +773,17 @@ function SlidePreview({ slide, index, onUpdate }: { slide: Slide; index: number;
                 {displayImage && <img src={displayImage} alt="Split" className="w-full h-full object-cover" referrerPolicy="no-referrer" style={{ filter: filterStyle }} />}
               </div>
             </div>
-            <div className="h-[45%] p-10 flex flex-col justify-center overflow-hidden">
+            <div className="h-[45%] px-8 py-6 flex flex-col justify-center overflow-hidden">
               {slide.stepNumber !== undefined && (
-                <span className="font-sans text-[10px] tracking-[0.2em] font-bold text-[var(--color-card-accent)] mb-3 uppercase shrink-0">
+                <span className="font-sans text-[10px] tracking-[0.2em] font-bold text-[var(--color-card-accent)] mb-2 uppercase shrink-0">
                   Step {typeof slide.stepNumber === 'number' && slide.stepNumber < 10 ? `0${slide.stepNumber}` : slide.stepNumber}
                 </span>
               )}
-              <h3 className="font-serif text-3xl text-[var(--color-card-dark)] mb-4 tracking-tight whitespace-pre-line leading-tight text-balance shrink-0">
+              <h3 className="font-serif text-2xl text-[var(--color-card-dark)] mb-3 tracking-tight whitespace-pre-line leading-tight text-balance shrink-0">
                 {slide.title}
               </h3>
               <div className="overflow-hidden">
-                <p className="font-sans text-[16px] leading-[1.7] text-[var(--color-card-dark)] opacity-80 whitespace-pre-line text-balance">
+                <p className="font-sans text-[15px] leading-[1.6] text-[var(--color-card-dark)] opacity-80 whitespace-pre-line text-balance">
                   {slide.content}
                 </p>
               </div>
@@ -750,19 +793,19 @@ function SlidePreview({ slide, index, onUpdate }: { slide: Slide; index: number;
 
       case 'quote-tip':
         return (
-          <div className="flex flex-col h-full items-center justify-center text-center p-12 relative overflow-hidden">
-            <span className="font-serif text-[120px] text-[var(--color-card-accent)] opacity-15 absolute top-4 left-6 leading-none select-none">
+          <div className="flex flex-col h-full items-center justify-center text-center p-10 relative overflow-hidden">
+            <span className="font-serif text-[100px] text-[var(--color-card-accent)] opacity-15 absolute top-4 left-6 leading-none select-none">
               “
             </span>
-            <h3 className="font-sans text-[10px] font-bold tracking-[0.25em] uppercase text-[var(--color-card-accent)] mb-8 whitespace-pre-line relative z-10 shrink-0">
+            <h3 className="font-sans text-[10px] font-bold tracking-[0.25em] uppercase text-[var(--color-card-accent)] mb-6 whitespace-pre-line relative z-10 shrink-0">
               {slide.title}
             </h3>
             <div className="overflow-hidden relative z-10 w-full">
-              <p className="font-serif text-[26px] leading-[1.5] text-[var(--color-card-dark)] italic whitespace-pre-line text-balance">
+              <p className="font-serif text-[22px] leading-[1.5] text-[var(--color-card-dark)] italic whitespace-pre-line text-balance">
                 {slide.content}
               </p>
             </div>
-            <span className="font-serif text-[120px] text-[var(--color-card-accent)] opacity-15 absolute bottom-[-40px] right-6 leading-none select-none rotate-180">
+            <span className="font-serif text-[100px] text-[var(--color-card-accent)] opacity-15 absolute bottom-[-30px] right-6 leading-none select-none rotate-180">
               “
             </span>
           </div>
@@ -784,12 +827,12 @@ function SlidePreview({ slide, index, onUpdate }: { slide: Slide; index: number;
               </div>
               <div className="relative w-full h-[60%] my-6 shrink-0">
                 {displayImage && <img src={displayImage} alt="Cover" className="w-full h-full object-cover grayscale contrast-125" referrerPolicy="no-referrer" style={{ filter: filterStyle }} />}
-                <h2 className={`${getFontThemeClass('title')} text-7xl text-[var(--color-card-dark)] leading-[0.85] tracking-tighter absolute -bottom-8 -left-4 mix-blend-multiply whitespace-pre-line text-balance`}>
+                <h2 className={`${getFontThemeClass('title')} text-6xl text-[var(--color-card-dark)] leading-[0.9] tracking-tighter absolute -bottom-8 -left-4 mix-blend-multiply whitespace-pre-line text-balance`}>
                   {slide.title}
                 </h2>
               </div>
               <div className="mt-auto flex justify-end overflow-hidden">
-                <p className={`${getFontThemeClass('body')} text-xs text-[var(--color-card-dark)]/80 max-w-[60%] text-right leading-relaxed whitespace-pre-line`}>
+                <p className={`${getFontThemeClass('body')} text-sm text-[var(--color-card-dark)]/80 max-w-[60%] text-right leading-[1.7] whitespace-pre-line`}>
                   {slide.content}
                 </p>
               </div>
@@ -804,19 +847,19 @@ function SlidePreview({ slide, index, onUpdate }: { slide: Slide; index: number;
               {slide.subtitle || 'TRENDING'}
             </div>
             <div className="flex-1 flex flex-col justify-center relative z-10 mt-8 overflow-hidden">
-              <div className="bg-white border-4 border-black p-6 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] mb-8 transform -rotate-2 shrink-0">
-                <h2 className="font-mono text-4xl font-black text-black leading-tight uppercase whitespace-pre-line text-balance">
+              <div className="bg-white border-4 border-black p-5 shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] mb-6 transform -rotate-2 shrink-0">
+                <h2 className="font-mono text-2xl font-black text-black leading-tight uppercase whitespace-pre-line text-balance">
                   {slide.title}
                 </h2>
               </div>
               {displayImage && (
-                <div className="w-full h-48 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] overflow-hidden bg-white shrink-0 mb-6">
+                <div className="w-full h-40 border-4 border-black shadow-[8px_8px_0px_0px_rgba(0,0,0,1)] overflow-hidden bg-white shrink-0 mb-5">
                   <img src={displayImage} alt="Brutalism" className="w-full h-full object-cover" referrerPolicy="no-referrer" style={{ filter: filterStyle }} />
                 </div>
               )}
               {slide.content && (
                 <div className="bg-[#FF90E8] border-4 border-black p-4 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] overflow-hidden">
-                  <p className="font-sans font-bold text-black text-base whitespace-pre-line text-balance">
+                  <p className="font-sans font-bold text-black text-base leading-relaxed whitespace-pre-line text-balance">
                     {slide.content}
                   </p>
                 </div>
@@ -846,11 +889,11 @@ function SlidePreview({ slide, index, onUpdate }: { slide: Slide; index: number;
                 </div>
               </div>
               <div className="overflow-hidden">
-                <h3 className={`${getFontThemeClass('body')} text-lg text-gray-900 mb-4 whitespace-pre-line text-balance`}>
+                <h3 className={`${getFontThemeClass('body')} text-xl leading-snug text-gray-900 mb-4 whitespace-pre-line text-balance`}>
                   {slide.title}
                 </h3>
                 {slide.content && (
-                  <p className="font-sans text-base text-blue-500 whitespace-pre-line text-balance">
+                  <p className="font-sans text-[17px] leading-relaxed text-blue-500 whitespace-pre-line text-balance">
                     {slide.content}
                   </p>
                 )}
@@ -870,13 +913,13 @@ function SlidePreview({ slide, index, onUpdate }: { slide: Slide; index: number;
             <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--color-card-accent)] opacity-5 rounded-full blur-3xl translate-x-1/2 -translate-y-1/2" />
             
             <div className={`flex-1 flex flex-col justify-center w-full relative z-10 mt-8 ${getTextBgClass()}`}>
-              <h3 className={`${getFontThemeClass('title')} text-5xl text-[var(--color-card-dark)] mb-8 tracking-tight whitespace-pre-line leading-tight text-balance`}>
+              <h3 className={`${getFontThemeClass('title')} text-4xl text-[var(--color-card-dark)] mb-8 tracking-tight whitespace-pre-line leading-tight text-balance`}>
                 {slide.title}
               </h3>
               {Array.isArray(slide.content) && (
                 <div className="space-y-4 mb-10 w-full max-w-[85%] mx-auto">
                   {slide.content.map((item, i) => (
-                    <div key={i} className={`${getFontThemeClass('body')} text-sm font-medium text-[var(--color-card-dark)] opacity-85 border-b border-[var(--color-card-dark)]/10 pb-3 whitespace-pre-line`}>
+                    <div key={i} className={`${getFontThemeClass('body')} text-[15px] leading-relaxed font-medium text-[var(--color-card-dark)] opacity-85 border-b border-[var(--color-card-dark)]/10 pb-3 whitespace-pre-line`}>
                       {item}
                     </div>
                   ))}
@@ -915,11 +958,11 @@ function SlidePreview({ slide, index, onUpdate }: { slide: Slide; index: number;
               </div>
             </div>
             <div className={`w-full text-center overflow-hidden flex flex-col ${getTextBgClass()}`}>
-              <h3 className={`${getFontThemeClass('title')} text-3xl text-[var(--color-card-dark)] mb-4 px-4 tracking-tight whitespace-pre-line leading-tight text-balance shrink-0`}>
+              <h3 className={`${getFontThemeClass('title')} text-2xl text-[var(--color-card-dark)] mb-4 px-4 tracking-tight whitespace-pre-line leading-tight text-balance shrink-0`}>
                 {slide.title}
               </h3>
               <div className="overflow-hidden">
-                <p className={`${getFontThemeClass('body')} text-[15px] leading-[1.7] text-[var(--color-card-dark)] opacity-80 px-4 whitespace-pre-line text-balance`}>
+                <p className={`${getFontThemeClass('body')} text-[16px] leading-[1.8] text-[var(--color-card-dark)] opacity-80 px-4 whitespace-pre-line text-balance`}>
                   {slide.content}
                 </p>
               </div>
@@ -930,13 +973,13 @@ function SlidePreview({ slide, index, onUpdate }: { slide: Slide; index: number;
 
       case 'editorial-text':
         return (
-          <div className="flex flex-col h-full p-12 relative justify-center overflow-hidden">
+          <div className="flex flex-col h-full p-10 relative justify-center overflow-hidden">
             {renderAccent("absolute top-12 right-10 w-32 h-32 text-[var(--color-card-accent)] opacity-[0.07] transform -rotate-12")}
-            <h3 className="font-serif text-[2.25rem] text-[var(--color-card-dark)] mb-10 border-b border-[var(--color-card-dark)]/15 pb-8 leading-[1.15] tracking-tight whitespace-pre-line text-balance shrink-0">
+            <h3 className="font-serif text-2xl text-[var(--color-card-dark)] mb-8 border-b border-[var(--color-card-dark)]/15 pb-6 leading-tight tracking-tight whitespace-pre-line text-balance shrink-0">
               {slide.title}
             </h3>
-            <div className="font-sans text-[16px] leading-[2.1] text-[var(--color-card-dark)] opacity-90 relative overflow-hidden whitespace-pre-line">
-              <span className="float-left text-[5.5rem] font-serif text-[var(--color-card-accent)] leading-[0.7] pr-5 pt-3 select-none">
+            <div className="font-sans text-base leading-[2] text-[var(--color-card-dark)] opacity-90 relative overflow-hidden whitespace-pre-line">
+              <span className="float-left text-[5rem] font-serif text-[var(--color-card-accent)] leading-[0.7] pr-4 pt-2 select-none">
                 {typeof slide.content === 'string' ? slide.content.charAt(0) : ''}
               </span>
               {typeof slide.content === 'string' ? slide.content.substring(1) : slide.content}
@@ -957,11 +1000,11 @@ function SlidePreview({ slide, index, onUpdate }: { slide: Slide; index: number;
                     Tip {typeof slide.stepNumber === 'number' && slide.stepNumber < 10 ? `0${slide.stepNumber}` : slide.stepNumber}
                   </span>
                 )}
-                <h3 className="font-serif text-3xl text-[var(--color-card-dark)] mb-4 leading-tight tracking-tight whitespace-pre-line text-balance shrink-0">
+                <h3 className="font-serif text-2xl text-[var(--color-card-dark)] mb-4 leading-tight tracking-tight whitespace-pre-line text-balance shrink-0">
                   {slide.title}
                 </h3>
                 <div className="overflow-hidden">
-                  <p className="font-sans text-[15px] leading-[1.7] text-[var(--color-card-dark)] opacity-85 whitespace-pre-line">
+                  <p className="font-sans text-[16px] leading-[1.8] text-[var(--color-card-dark)] opacity-85 whitespace-pre-line">
                     {slide.content}
                   </p>
                 </div>
@@ -979,7 +1022,7 @@ function SlidePreview({ slide, index, onUpdate }: { slide: Slide; index: number;
             <div className="absolute top-1/2 left-1/2 w-48 h-48 rounded-full bg-[var(--color-shape-blue)] opacity-50 mix-blend-multiply -translate-x-1/2 -translate-y-1/2 z-0"></div>
             
             <div className={`relative z-10 w-full text-center shrink-0 mb-6 ${getTextBgClass()}`}>
-              <h3 className={`${getFontThemeClass('title')} text-3xl text-[var(--color-card-dark)] tracking-tight whitespace-pre-line leading-[1.15] text-balance`}>
+              <h3 className={`${getFontThemeClass('title')} text-2xl text-[var(--color-card-dark)] tracking-tight whitespace-pre-line leading-tight text-balance`}>
                 {slide.title}
               </h3>
             </div>
@@ -991,7 +1034,7 @@ function SlidePreview({ slide, index, onUpdate }: { slide: Slide; index: number;
             </div>
             
             <div className={`relative z-10 w-full text-center shrink-0 mt-6 overflow-hidden ${slide.textBackground && slide.textBackground !== 'none' ? getTextBgClass() : 'bg-white/40 backdrop-blur-md p-4 rounded-xl border border-white/50'}`}>
-              <p className={`${getFontThemeClass('body')} text-[15px] leading-[1.6] text-[var(--color-card-dark)] italic whitespace-pre-line text-balance`}>
+              <p className={`${getFontThemeClass('body')} text-[16px] leading-[1.8] text-[var(--color-card-dark)] italic whitespace-pre-line text-balance`}>
                 {slide.content}
               </p>
             </div>
@@ -1005,11 +1048,11 @@ function SlidePreview({ slide, index, onUpdate }: { slide: Slide; index: number;
               <span className="block font-sans font-bold text-[8rem] leading-none text-[var(--color-bold-yellow)] mb-2 tracking-tighter shrink-0">
                 {slide.stepNumber !== undefined ? slide.stepNumber : index}
               </span>
-              <h3 className="font-sans font-bold text-4xl text-white mb-6 leading-[1.1] tracking-tight whitespace-pre-line text-balance shrink-0">
+              <h3 className="font-sans font-bold text-3xl text-white mb-6 leading-tight tracking-tight whitespace-pre-line text-balance shrink-0">
                 {slide.title}
               </h3>
               <div className="flex-1 overflow-hidden">
-                <p className="font-sans text-[18px] font-medium leading-relaxed text-white/90 whitespace-pre-line text-balance">
+                <p className="font-sans text-[19px] font-medium leading-[1.8] text-white/90 whitespace-pre-line text-balance">
                   {slide.content}
                 </p>
               </div>
@@ -1041,12 +1084,12 @@ function SlidePreview({ slide, index, onUpdate }: { slide: Slide; index: number;
             </div>
             
             <div className={`relative z-10 shrink-0 w-full text-center overflow-hidden flex flex-col ${getTextBgClass()}`}>
-              <h2 className={`${getFontThemeClass('title')} text-2xl text-[var(--color-card-dark)] tracking-tight whitespace-pre-line text-balance mb-3 shrink-0`}>
+              <h2 className={`${getFontThemeClass('title')} text-2xl text-[var(--color-card-dark)] tracking-tight whitespace-pre-line leading-tight text-balance mb-3 shrink-0`}>
                 {slide.title}
               </h2>
               {slide.content && (
                 <div className="overflow-hidden">
-                  <p className={`${getFontThemeClass('body')} text-sm leading-[1.6] text-[var(--color-card-dark)] opacity-80 whitespace-pre-line text-balance`}>
+                  <p className={`${getFontThemeClass('body')} text-[15px] leading-[1.7] text-[var(--color-card-dark)] opacity-80 whitespace-pre-line text-balance`}>
                     {slide.content}
                   </p>
                 </div>
@@ -1062,20 +1105,20 @@ function SlidePreview({ slide, index, onUpdate }: { slide: Slide; index: number;
            stats.push({ value: items[i], label: items[i+1] || '' });
         }
         return (
-          <div className="flex flex-col h-full p-10 bg-[var(--color-card-bg)] overflow-hidden">
+          <div className="flex flex-col h-full p-8 bg-[var(--color-card-bg)] overflow-hidden">
             {slide.subtitle && (
-              <span className="font-sans text-[10px] tracking-[0.3em] font-bold uppercase text-[var(--color-card-accent)] mb-6 shrink-0">
+              <span className="font-sans text-[10px] tracking-[0.3em] font-bold uppercase text-[var(--color-card-accent)] mb-4 shrink-0">
                 {slide.subtitle}
               </span>
             )}
-            <h3 className="font-serif text-3xl text-[var(--color-card-dark)] mb-10 leading-[1.15] tracking-tight whitespace-pre-line shrink-0 text-balance">
+            <h3 className="font-serif text-2xl text-[var(--color-card-dark)] mb-6 leading-tight tracking-tight whitespace-pre-line shrink-0 text-balance">
               {slide.title}
             </h3>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-8 flex-1 content-center overflow-hidden">
+            <div className="grid grid-cols-2 gap-x-6 gap-y-6 flex-1 content-center overflow-hidden">
               {stats.map((stat, i) => (
-                <div key={i} className="flex flex-col border-t-2 border-[var(--color-card-dark)]/10 pt-4 overflow-hidden">
-                  <span className="font-serif text-4xl text-[var(--color-card-accent)] mb-2 tracking-tight truncate">{stat.value}</span>
-                  <span className="font-sans text-[12px] font-medium text-[var(--color-card-dark)] opacity-80 leading-snug line-clamp-3">{stat.label}</span>
+                <div key={i} className="flex flex-col border-t-2 border-[var(--color-card-dark)]/10 pt-3 overflow-hidden">
+                  <span className="font-serif text-3xl text-[var(--color-card-accent)] mb-1 tracking-tight truncate">{stat.value}</span>
+                  <span className="font-sans text-xs font-medium text-[var(--color-card-dark)] opacity-80 leading-relaxed line-clamp-3">{stat.label}</span>
                 </div>
               ))}
             </div>
@@ -1095,20 +1138,20 @@ function SlidePreview({ slide, index, onUpdate }: { slide: Slide; index: number;
           return match ? match[0] : '';
         };
         return (
-          <div className="flex flex-col h-full p-10 bg-[var(--color-card-dark)] text-white overflow-hidden">
+          <div className="flex flex-col h-full p-8 bg-[var(--color-card-dark)] text-white overflow-hidden">
             {slide.subtitle && (
-              <span className="font-sans text-[10px] tracking-[0.3em] font-bold uppercase text-[var(--color-card-accent)] mb-6 shrink-0">
+              <span className="font-sans text-[10px] tracking-[0.3em] font-bold uppercase text-[var(--color-card-accent)] mb-4 shrink-0">
                 {slide.subtitle}
               </span>
             )}
-            <h3 className="font-serif text-3xl mb-10 leading-[1.15] tracking-tight whitespace-pre-line shrink-0 text-balance">
+            <h3 className="font-serif text-2xl mb-6 leading-tight tracking-tight whitespace-pre-line shrink-0 text-balance">
               {slide.title}
             </h3>
-            <div className="flex flex-col gap-6 flex-1 justify-center overflow-hidden">
+            <div className="flex flex-col gap-4 flex-1 justify-center overflow-hidden">
               {items.map((item, i) => {
                 const width = getWidth(item);
                 return (
-                  <div key={i} className="flex flex-col gap-2 shrink-0">
+                  <div key={i} className="flex flex-col gap-1.5 shrink-0">
                     <div className="flex justify-between font-sans text-[13px] font-medium opacity-90">
                       <span className="truncate pr-2">{getLabel(item)}</span>
                       <span className="text-[var(--color-card-accent)] shrink-0">{getValue(item)}</span>
@@ -1128,27 +1171,27 @@ function SlidePreview({ slide, index, onUpdate }: { slide: Slide; index: number;
         const percentage = slide.stepNumber !== undefined ? parseInt(String(slide.stepNumber)) || 75 : 75;
         const deg = (percentage / 100) * 360;
         return (
-          <div className="flex flex-col h-full p-10 items-center justify-center bg-[var(--color-card-bg)] relative overflow-hidden">
+          <div className="flex flex-col h-full p-8 items-center justify-center bg-[var(--color-card-bg)] relative overflow-hidden">
             {slide.subtitle && (
-              <span className="font-sans text-[10px] tracking-[0.3em] font-bold uppercase text-[var(--color-card-accent)] mb-6 shrink-0 w-full text-left">
+              <span className="font-sans text-[10px] tracking-[0.3em] font-bold uppercase text-[var(--color-card-accent)] mb-4 shrink-0 w-full text-left">
                 {slide.subtitle}
               </span>
             )}
-            <h3 className="font-serif text-3xl text-[var(--color-card-dark)] mb-12 text-center leading-[1.15] tracking-tight whitespace-pre-line shrink-0 w-full text-balance">
+            <h3 className="font-serif text-2xl text-[var(--color-card-dark)] mb-8 text-center leading-tight tracking-tight whitespace-pre-line shrink-0 w-full text-balance">
               {slide.title}
             </h3>
             
-            <div className="relative w-48 h-48 rounded-full flex items-center justify-center shrink-0 mb-10 shadow-xl"
+            <div className="relative w-40 h-40 rounded-full flex items-center justify-center shrink-0 mb-8 shadow-xl"
                  style={{ background: `conic-gradient(var(--color-card-accent) ${deg}deg, rgba(0,0,0,0.05) 0deg)` }}>
               <div className="absolute inset-3 bg-[var(--color-card-bg)] rounded-full flex items-center justify-center shadow-inner">
-                <span className="font-serif text-5xl text-[var(--color-card-dark)] tracking-tighter">
+                <span className="font-serif text-4xl text-[var(--color-card-dark)] tracking-tighter">
                   {percentage}%
                 </span>
               </div>
             </div>
             
             <div className="overflow-hidden w-full">
-              <p className="font-sans text-[16px] leading-[1.6] text-[var(--color-card-dark)] opacity-80 text-center whitespace-pre-line max-w-[90%] mx-auto">
+              <p className="font-sans text-base leading-[1.7] text-[var(--color-card-dark)] opacity-80 text-center whitespace-pre-line max-w-[90%] mx-auto">
                 {slide.content}
               </p>
             </div>
@@ -1225,20 +1268,34 @@ function SlidePreview({ slide, index, onUpdate }: { slide: Slide; index: number;
       </div>
 
       {/* Slide Container */}
-      <div className="slide-export-target relative w-full aspect-[4/5] overflow-hidden shadow-md border border-brand-dark/10 transition-colors duration-300"
-           style={{ backgroundColor: slide.bgColor, textShadow: getOutlineStyle() }}>
+      <div className={`slide-export-target relative w-full ${aspectRatio === '4/5' ? 'aspect-[4/5]' : 'aspect-square'} overflow-hidden shadow-md border border-brand-dark/10 transition-colors duration-300`}
+           style={{ 
+             backgroundColor: slide.bgColor, 
+             '--title-outline': getOutlineStyle(),
+             '--text-scale': slide.fontSizeScale || 1
+           } as React.CSSProperties}>
         
         {/* Global Texture Overlay */}
         {slide.globalTexture === 'noise' && (
-          <div className="absolute inset-0 z-50 pointer-events-none opacity-[0.15] mix-blend-overlay" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}></div>
+          <div className="absolute inset-0 z-50 pointer-events-none opacity-[0.08] grayscale" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}></div>
         )}
         {slide.globalTexture === 'paper' && (
-          <div className="absolute inset-0 z-50 pointer-events-none opacity-[0.4] mix-blend-multiply" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='paperFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.04' numOctaves='5' result='noise'/%3E%3CfeDiffuseLighting in='noise' lighting-color='%23fff' surfaceScale='2'%3E%3CfeDistantLight azimuth='45' elevation='60'/%3E%3C/feDiffuseLighting%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23paperFilter)'/%3E%3C/svg%3E")` }}></div>
+          <div className="absolute inset-0 z-50 pointer-events-none opacity-[0.05] grayscale" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='paperFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.04' numOctaves='5' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23paperFilter)'/%3E%3C/svg%3E")` }}></div>
         )}
 
-        {/* Slide Number Badge (visible in editor, hidden on export via CSS if needed) */}
-        <div className="absolute top-4 right-4 text-[var(--color-card-dark)] text-[10px] font-sans font-bold px-2 py-1 z-20 tracking-widest opacity-30">
-          {index + 1} / 10
+        {/* Trendy Progress Bar */}
+        <div className="absolute top-0 left-0 w-full h-1.5 bg-black/5 z-50">
+          <div 
+            className="h-full bg-[var(--color-card-accent)] transition-all duration-300" 
+            style={{ width: `${((index + 1) / totalSlides) * 100}%` }}
+          />
+        </div>
+
+        {/* Trendy Page Number */}
+        <div className="absolute top-5 right-5 flex items-center gap-2 z-20 opacity-40 mix-blend-difference text-white">
+          <span className="font-sans text-[10px] font-bold tracking-[0.2em]">{String(index + 1).padStart(2, '0')}</span>
+          <div className="w-4 h-[1px] bg-white"></div>
+          <span className="font-sans text-[10px] font-medium tracking-[0.2em]">{String(totalSlides).padStart(2, '0')}</span>
         </div>
 
         {/* Layout Library Modal */}
@@ -1416,16 +1473,81 @@ function SlidePreview({ slide, index, onUpdate }: { slide: Slide; index: number;
               {slide.layout !== 'cover-arch' && slide.layout !== 'continuous-line' && (
                 <div>
                   <label className="block text-[10px] font-bold uppercase text-brand-dark/50 mb-1">Body Content</label>
-                  <textarea 
-                    value={typeof slide.content === 'string' ? slide.content : (Array.isArray(slide.content) ? slide.content.join('\n') : '')} 
-                    onChange={e => {
-                      const val = e.target.value;
-                      onUpdate({ content: slide.layout === 'cta-minimal' ? val.split('\n') : val });
-                    }} 
-                    className="w-full border border-brand-dark/20 rounded p-2 text-sm focus:ring-1 focus:ring-brand-green outline-none resize-none" 
-                    placeholder={slide.layout === 'cta-minimal' ? "Enter items (one per line)" : "Enter body text..."} 
-                    rows={5}
-                  />
+                  {slide.layout === 'info-stat-grid' || slide.layout === 'info-bar-chart' ? (
+                    <div className="space-y-3 bg-brand-dark/5 p-3 rounded-lg border border-brand-dark/10">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-[10px] font-bold uppercase text-brand-dark/50">Data Points</span>
+                        <button 
+                          onClick={() => {
+                            const contentArray = Array.isArray(slide.content) ? slide.content : (typeof slide.content === 'string' ? slide.content.split('\n') : []);
+                            const newContent = [...contentArray];
+                            newContent.push('New Value', 'New Label');
+                            onUpdate({ content: newContent });
+                          }}
+                          className="text-[10px] bg-brand-green/10 text-brand-green px-2 py-1 rounded hover:bg-brand-green/20 transition-colors font-bold"
+                        >
+                          + ADD ITEM
+                        </button>
+                      </div>
+                      {Array.from({ length: Math.max(1, Math.ceil((Array.isArray(slide.content) ? slide.content.length : 0) / 2)) }).map((_, i) => {
+                        const contentArray = Array.isArray(slide.content) ? slide.content : (typeof slide.content === 'string' ? slide.content.split('\n') : []);
+                        return (
+                          <div key={i} className="flex flex-col gap-1 bg-white p-2 rounded border border-brand-dark/10 shadow-sm relative group">
+                            <button 
+                              onClick={() => {
+                                const newContent = [...contentArray];
+                                newContent.splice(i * 2, 2);
+                                onUpdate({ content: newContent });
+                              }}
+                              className="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                              title="Remove item"
+                            >
+                              ×
+                            </button>
+                            <input 
+                              type="text" 
+                              placeholder="Value (e.g. Free)"
+                              className="w-full bg-transparent border-none p-1 text-xl font-serif text-brand-dark focus:ring-0 outline-none placeholder:text-brand-dark/20"
+                              style={{ fontFamily: slide.fontTheme === 'modern' ? 'sans-serif' : 'serif' }}
+                              value={contentArray[i * 2] || ''}
+                              onChange={(e) => {
+                                const newContent = [...contentArray];
+                                newContent[i * 2] = e.target.value;
+                                onUpdate({ content: newContent });
+                              }}
+                            />
+                            <input 
+                              type="text" 
+                              placeholder="Label (e.g. Wi-Fi Access)"
+                              className="w-full bg-transparent border-none p-1 text-xs font-bold text-brand-dark/60 focus:ring-0 outline-none placeholder:text-brand-dark/20 uppercase tracking-wider"
+                              value={contentArray[i * 2 + 1] || ''}
+                              onChange={(e) => {
+                                const newContent = [...contentArray];
+                                newContent[i * 2 + 1] = e.target.value;
+                                onUpdate({ content: newContent });
+                              }}
+                            />
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ) : slide.layout === 'cta-minimal' ? (
+                    <textarea 
+                      value={typeof slide.content === 'string' ? slide.content : (Array.isArray(slide.content) ? slide.content.join('\n') : '')} 
+                      onChange={e => onUpdate({ content: e.target.value.split('\n') })} 
+                      className="w-full border border-brand-dark/20 rounded p-2 text-sm focus:ring-1 focus:ring-brand-green outline-none resize-none" 
+                      placeholder="Enter items (one per line)" 
+                      rows={5}
+                    />
+                  ) : (
+                    <textarea 
+                      value={typeof slide.content === 'string' ? slide.content : (Array.isArray(slide.content) ? slide.content.join('\n') : '')} 
+                      onChange={e => onUpdate({ content: e.target.value })} 
+                      className="w-full border border-brand-dark/20 rounded p-2 text-sm focus:ring-1 focus:ring-brand-green outline-none resize-none" 
+                      placeholder="Enter body text..." 
+                      rows={5}
+                    />
+                  )}
                 </div>
               )}
 
@@ -1500,6 +1622,23 @@ function SlidePreview({ slide, index, onUpdate }: { slide: Slide; index: number;
                       <option value="paper">Paper Texture</option>
                     </select>
                   </div>
+
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <label className="block text-[10px] font-bold uppercase text-brand-dark/50">Text Size Scale</label>
+                      <span className="text-[10px] font-mono text-brand-dark/50">{Math.round((slide.fontSizeScale || 1) * 100)}%</span>
+                    </div>
+                    <input 
+                      type="range" 
+                      min="0.5" 
+                      max="1.5" 
+                      step="0.05"
+                      value={slide.fontSizeScale || 1} 
+                      onChange={e => onUpdate({ fontSizeScale: parseFloat(e.target.value) })} 
+                      className="w-full accent-brand-green"
+                    />
+                    <p className="text-[9px] text-brand-dark/40 mt-1">Adjust this if text is overflowing the card.</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1507,7 +1646,9 @@ function SlidePreview({ slide, index, onUpdate }: { slide: Slide; index: number;
         )}
 
         {/* Render the specific layout */}
-        {renderLayout()}
+        <div className="w-full h-full relative z-10 break-words">
+          {renderLayout()}
+        </div>
       </div>
     </div>
   );

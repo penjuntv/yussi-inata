@@ -42,3 +42,26 @@
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(0,0,0,0.2);
 }
+
+/* Text Scaling for Slide Export Target */
+.slide-export-target .text-5xl { font-size: calc(3rem * var(--text-scale, 1)) !important; line-height: calc(1 * var(--text-scale, 1)) !important; }
+.slide-export-target .text-4xl { font-size: calc(2.25rem * var(--text-scale, 1)) !important; line-height: calc(2.5rem * var(--text-scale, 1)) !important; }
+.slide-export-target .text-3xl { font-size: calc(1.875rem * var(--text-scale, 1)) !important; line-height: calc(2.25rem * var(--text-scale, 1)) !important; }
+.slide-export-target .text-2xl { font-size: calc(1.5rem * var(--text-scale, 1)) !important; line-height: calc(2rem * var(--text-scale, 1)) !important; }
+.slide-export-target .text-xl { font-size: calc(1.25rem * var(--text-scale, 1)) !important; line-height: calc(1.75rem * var(--text-scale, 1)) !important; }
+.slide-export-target .text-lg { font-size: calc(1.125rem * var(--text-scale, 1)) !important; line-height: calc(1.75rem * var(--text-scale, 1)) !important; }
+.slide-export-target .text-base { font-size: calc(1rem * var(--text-scale, 1)) !important; line-height: calc(1.5rem * var(--text-scale, 1)) !important; }
+.slide-export-target .text-sm { font-size: calc(0.875rem * var(--text-scale, 1)) !important; line-height: calc(1.25rem * var(--text-scale, 1)) !important; }
+.slide-export-target .text-xs { font-size: calc(0.75rem * var(--text-scale, 1)) !important; line-height: calc(1rem * var(--text-scale, 1)) !important; }
+.slide-export-target .text-\[10px\] { font-size: calc(10px * var(--text-scale, 1)) !important; line-height: calc(14px * var(--text-scale, 1)) !important; }
+.slide-export-target .text-\[9px\] { font-size: calc(9px * var(--text-scale, 1)) !important; line-height: calc(12px * var(--text-scale, 1)) !important; }
+.slide-export-target .text-\[8px\] { font-size: calc(8px * var(--text-scale, 1)) !important; line-height: calc(10px * var(--text-scale, 1)) !important; }
+
+/* Apply text shadow only to titles and subtitles, not the whole card */
+.slide-export-target h1,
+.slide-export-target h2,
+.slide-export-target h3,
+.slide-export-target h4,
+.slide-export-target .title-shadow {
+  text-shadow: var(--title-outline, none);
+}
