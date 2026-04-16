@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useLayoutEffect } from 'react';
 import { 
   Image as ImageIcon, Save, Share2, Heart, Bookmark, Loader2, Download, 
   RefreshCw, Palette, Type, Droplet, AlertCircle, User, ArrowRight, 
@@ -12,7 +12,7 @@ import * as htmlToImage from 'html-to-image';
 import JSZip from 'jszip';
 import { saveAs } from 'file-saver';
 import { GoogleGenAI } from "@google/genai";
-import { Koru, SilverFern, Kiwi, Mountain, Squiggle, NZMap, SouthernCross, BookOpen, SunRays, OrganicBlob } from './components/NZIcons';
+import { Koru, SilverFern, Kiwi, Mountain, Squiggle, NZMap, SouthernCross, BookOpen, SunRays, OrganicBlob, Pohutukawa, Tui, Kauri } from './components/NZIcons';
 
 type LayoutType = 'cover-arch' | 'cover-image-full' | 'cover-split' | 'cover-minimal' | 'cover-polaroid' | 'step-list' | 'image-split' | 'quote-tip' | 'cta-minimal' | 'polaroid-focus' | 'editorial-text' | 'photo-overlay' | 'abstract-shapes' | 'bold-number' | 'continuous-line' | 'info-stat-grid' | 'info-bar-chart' | 'info-donut-chart' | 'magazine-cover' | 'neo-brutalism' | 'social-quote';
 type InputSourceType = 'text' | 'url' | 'json' | 'manual';
@@ -33,8 +33,26 @@ interface Slide {
   globalTexture?: 'none' | 'noise' | 'paper'; // Global texture overlay
   fontColor?: string;
   bgColor?: string;
-  accentIcon?: 'squiggle' | 'leaf' | 'koru' | 'fern' | 'kiwi' | 'mountain' | 'nzmap' | 'southerncross' | 'book' | 'sun' | 'blob';
+  accentIcon?: 'none' | 'squiggle' | 'leaf' | 'koru' | 'fern' | 'kiwi' | 'mountain' | 'nzmap' | 'southerncross' | 'book' | 'sun' | 'blob' | 'pohutukawa' | 'tui' | 'kauri';
+  accentColor?: string;
+  accentSize?: number;
+  accentOpacity?: number;
+  accentX?: number;
+  accentY?: number;
+  accentRotation?: number;
+  accentFlipX?: boolean;
+  accentFlipY?: boolean;
   fontSizeScale?: number; // Scale factor for text size to prevent overflow
+  overflowHandling?: 'truncate' | 'auto-scale' | 'none'; // How to handle text overflow
+  bgImage?: string;
+  bgImageScale?: number;
+  bgImageX?: number;
+  bgImageY?: number;
+  bgImageOpacity?: number;
+  fgImage?: string;
+  fgImageScale?: number;
+  fgImageX?: number;
+  fgImageY?: number;
 }
 
 const IMAGE_FILTERS = [
@@ -193,6 +211,9 @@ const NZ_ACCENTS = [
   { id: 'book', name: 'Education', component: BookOpen },
   { id: 'sun', name: 'Sun Rays', component: SunRays },
   { id: 'blob', name: 'Organic Blob', component: OrganicBlob },
+  { id: 'pohutukawa', name: 'Pohutukawa', component: Pohutukawa },
+  { id: 'tui', name: 'Tui Bird', component: Tui },
+  { id: 'kauri', name: 'Kauri Tree', component: Kauri },
 ];
 
 export default function App() {
@@ -249,6 +270,8 @@ interface Slide {
   textBackground?: 'none' | 'glass-light' | 'glass-dark' | 'solid-light' | 'solid-dark';
   globalTexture?: 'none' | 'noise' | 'paper';
   bgColor?: string; // optional hex color
+  accentIcon?: 'none' | 'squiggle' | 'leaf' | 'koru' | 'fern' | 'kiwi' | 'mountain' | 'nzmap' | 'southerncross' | 'book' | 'sun' | 'blob' | 'pohutukawa' | 'tui' | 'kauri';
+  accentColor?: string; // optional hex color
 }
 
 Rules:
@@ -276,6 +299,8 @@ interface Slide {
   textBackground?: 'none' | 'glass-light' | 'glass-dark' | 'solid-light' | 'solid-dark';
   globalTexture?: 'none' | 'noise' | 'paper';
   bgColor?: string; // optional hex color
+  accentIcon?: 'none' | 'squiggle' | 'leaf' | 'koru' | 'fern' | 'kiwi' | 'mountain' | 'nzmap' | 'southerncross' | 'book' | 'sun' | 'blob' | 'pohutukawa' | 'tui' | 'kauri';
+  accentColor?: string; // optional hex color
 }
 
 Rules:
@@ -599,16 +624,89 @@ Rules:
 
 function SlidePreview({ slide, index, totalSlides, onUpdate, aspectRatio }: { slide: Slide; index: number; totalSlides: number; onUpdate: (u: Partial<Slide>) => void; aspectRatio: '4/5' | '1/1'; key?: React.Key }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const bgFileInputRef = useRef<HTMLInputElement>(null);
+  const fgFileInputRef = useRef<HTMLInputElement>(null);
   const [isEditingText, setIsEditingText] = useState(false);
   const [isLayoutModalOpen, setIsLayoutModalOpen] = useState(false);
   const [isAssetModalOpen, setIsAssetModalOpen] = useState(false);
   const [activeAssetTab, setActiveAssetTab] = useState<'images' | 'accents'>('images');
+  const exportTargetRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const handleOverflow = () => {
+      const el = exportTargetRef.current;
+      if (!el) return;
+
+      const mode = slide.overflowHandling || 'auto-scale';
+
+      if (mode === 'none' || mode === 'truncate') {
+        el.style.setProperty('--auto-scale', '1');
+        if (mode === 'truncate') {
+          el.classList.add('overflow-mode-truncate');
+        } else {
+          el.classList.remove('overflow-mode-truncate');
+        }
+        return;
+      }
+
+      el.classList.remove('overflow-mode-truncate');
+
+      // Reset to measure natural size
+      el.style.setProperty('--auto-scale', '1');
+      
+      const checkOverflow = (element: HTMLElement): boolean => {
+        // Ignore elements that are explicitly meant to overflow or don't matter
+        if (element.classList.contains('absolute') && element.classList.contains('opacity-15')) return false; 
+        
+        if (element.scrollHeight > element.clientHeight + 2 || element.scrollWidth > element.clientWidth + 2) {
+          return true;
+        }
+        for (let i = 0; i < element.children.length; i++) {
+          if (checkOverflow(element.children[i] as HTMLElement)) {
+            return true;
+          }
+        }
+        return false;
+      };
+
+      let isOverflowing = checkOverflow(el);
+      let currentScale = 1;
+      let attempts = 0;
+
+      while (isOverflowing && attempts < 20 && currentScale > 0.45) {
+        currentScale -= 0.05;
+        el.style.setProperty('--auto-scale', currentScale.toString());
+        isOverflowing = checkOverflow(el);
+        attempts++;
+      }
+    };
+
+    // Use a small timeout to allow fonts and images to render/layout
+    const timer = setTimeout(handleOverflow, 50);
+    return () => clearTimeout(timer);
+  }, [slide.content, slide.title, slide.subtitle, slide.layout, slide.fontSizeScale, slide.overflowHandling, aspectRatio]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const url = URL.createObjectURL(file);
       onUpdate({ customImage: url });
+    }
+  };
+
+  const handleBgImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      onUpdate({ bgImage: url });
+    }
+  };
+
+  const handleFgImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      onUpdate({ fgImage: url });
     }
   };
 
@@ -648,6 +746,89 @@ function SlidePreview({ slide, index, totalSlides, onUpdate, aspectRatio }: { sl
     const accentId = slide.accentIcon || 'squiggle';
     const AccentComponent = NZ_ACCENTS.find(a => a.id === accentId)?.component || Squiggle;
     return <AccentComponent className={className} />;
+  };
+
+  const renderCustomAccent = () => {
+    if (!slide.accentIcon || slide.accentIcon === 'none') return null;
+    
+    const iconData = NZ_ACCENTS.find(a => a.id === slide.accentIcon);
+    if (!iconData) return null;
+    
+    const Icon = iconData.component;
+    const x = slide.accentX ?? 85;
+    const y = slide.accentY ?? 15;
+    const scale = slide.accentSize ?? 1;
+    const opacity = slide.accentOpacity ?? 0.2;
+    const rotation = slide.accentRotation ?? 0;
+    const flipX = slide.accentFlipX ? -1 : 1;
+    const flipY = slide.accentFlipY ? -1 : 1;
+    const color = slide.accentColor || 'var(--color-card-accent)';
+    
+    return (
+      <div 
+        className="absolute z-40 pointer-events-none transition-all duration-300"
+        style={{
+          left: `${x}%`,
+          top: `${y}%`,
+          width: `${scale * 100}px`,
+          height: `${scale * 100}px`,
+          opacity: opacity,
+          transform: `translate(-50%, -50%) rotate(${rotation}deg) scale(${flipX}, ${flipY})`,
+          color: color
+        }}
+      >
+        <Icon className="w-full h-full" />
+      </div>
+    );
+  };
+
+  const renderBackgroundImage = () => {
+    if (!slide.bgImage) return null;
+    return (
+      <div 
+        className="absolute inset-0 z-0 pointer-events-none transition-all duration-300 overflow-hidden"
+      >
+        <img 
+          src={slide.bgImage} 
+          alt="Background" 
+          className="absolute max-w-none transition-all duration-300"
+          referrerPolicy="no-referrer"
+          style={{
+            left: `${slide.bgImageX ?? 50}%`,
+            top: `${slide.bgImageY ?? 50}%`,
+            width: slide.bgImageScale ? `${slide.bgImageScale * 100}%` : '100%',
+            height: slide.bgImageScale ? 'auto' : '100%',
+            opacity: slide.bgImageOpacity ?? 1,
+            objectFit: slide.bgImageScale ? 'contain' : 'cover',
+            transform: 'translate(-50%, -50%)',
+            filter: filterStyle
+          }}
+        />
+      </div>
+    );
+  };
+
+  const renderForegroundImage = () => {
+    if (!slide.fgImage) return null;
+    return (
+      <div 
+        className="absolute inset-0 z-20 pointer-events-none transition-all duration-300"
+      >
+        <img 
+          src={slide.fgImage} 
+          alt="Foreground" 
+          className="absolute max-w-none transition-all duration-300"
+          referrerPolicy="no-referrer"
+          style={{
+            left: `${slide.fgImageX ?? 50}%`,
+            top: `${slide.fgImageY ?? 50}%`,
+            width: `${(slide.fgImageScale || 1) * 200}px`,
+            height: 'auto',
+            transform: 'translate(-50%, -50%)',
+          }}
+        />
+      </div>
+    );
   };
   
   const renderLayout = () => {
@@ -978,8 +1159,16 @@ function SlidePreview({ slide, index, totalSlides, onUpdate, aspectRatio }: { sl
             <h3 className="font-serif text-2xl text-[var(--color-card-dark)] mb-8 border-b border-[var(--color-card-dark)]/15 pb-6 leading-tight tracking-tight whitespace-pre-line text-balance shrink-0">
               {slide.title}
             </h3>
-            <div className="font-sans text-base leading-[2] text-[var(--color-card-dark)] opacity-90 relative overflow-hidden whitespace-pre-line">
-              <span className="float-left text-[5rem] font-serif text-[var(--color-card-accent)] leading-[0.7] pr-4 pt-2 select-none">
+            <div className="font-sans text-[var(--color-card-dark)] opacity-90 relative overflow-hidden whitespace-pre-line"
+                 style={{ 
+                   fontSize: 'calc(1rem * var(--text-scale, 1))', 
+                   lineHeight: 'calc(2rem * var(--text-scale, 1))' 
+                 }}>
+              <span className="float-left font-serif text-[var(--color-card-accent)] pr-4 pt-2 select-none"
+                    style={{ 
+                      fontSize: 'calc(5rem * var(--text-scale, 1))', 
+                      lineHeight: '0.7' 
+                    }}>
                 {typeof slide.content === 'string' ? slide.content.charAt(0) : ''}
               </span>
               {typeof slide.content === 'string' ? slide.content.substring(1) : slide.content}
@@ -1228,6 +1417,20 @@ function SlidePreview({ slide, index, totalSlides, onUpdate, aspectRatio }: { sl
                 ref={fileInputRef}
                 onChange={handleImageUpload}
               />
+              <input 
+                type="file" 
+                accept="image/*" 
+                className="hidden" 
+                ref={bgFileInputRef}
+                onChange={handleBgImageUpload}
+              />
+              <input 
+                type="file" 
+                accept="image/*" 
+                className="hidden" 
+                ref={fgFileInputRef}
+                onChange={handleFgImageUpload}
+              />
               <button 
                 onClick={() => fileInputRef.current?.click()}
                 className="flex items-center gap-1 px-2 py-1 rounded hover:bg-gray-100 text-brand-dark/70 hover:text-brand-dark transition-colors"
@@ -1264,15 +1467,30 @@ function SlidePreview({ slide, index, totalSlides, onUpdate, aspectRatio }: { sl
               className="w-5 h-5 rounded cursor-pointer border-0 p-0"
             />
           </div>
+
+          {/* Texture Selector */}
+          <div className="flex items-center gap-1 px-1 border-l border-gray-200 pl-3" title="Global Texture">
+            <Droplet className="w-3 h-3 text-brand-dark/50" />
+            <select 
+              value={slide.globalTexture || 'none'} 
+              onChange={e => onUpdate({ globalTexture: e.target.value as any })} 
+              className="text-[10px] font-bold uppercase bg-transparent border-none p-0 focus:ring-0 cursor-pointer text-brand-dark/70 hover:text-brand-dark outline-none"
+            >
+              <option value="none">No Texture</option>
+              <option value="noise">Noise</option>
+              <option value="paper">Paper</option>
+            </select>
+          </div>
         </div>
       </div>
 
       {/* Slide Container */}
-      <div className={`slide-export-target relative w-full ${aspectRatio === '4/5' ? 'aspect-[4/5]' : 'aspect-square'} overflow-hidden shadow-md border border-brand-dark/10 transition-colors duration-300`}
+      <div ref={exportTargetRef}
+           className={`slide-export-target relative w-full ${aspectRatio === '4/5' ? 'aspect-[4/5]' : 'aspect-square'} overflow-hidden shadow-md border border-brand-dark/10 transition-colors duration-300`}
            style={{ 
              backgroundColor: slide.bgColor, 
              '--title-outline': getOutlineStyle(),
-             '--text-scale': slide.fontSizeScale || 1
+             '--text-scale': `calc(${slide.fontSizeScale || 1} * var(--auto-scale, 1))`
            } as React.CSSProperties}>
         
         {/* Global Texture Overlay */}
@@ -1282,6 +1500,9 @@ function SlidePreview({ slide, index, totalSlides, onUpdate, aspectRatio }: { sl
         {slide.globalTexture === 'paper' && (
           <div className="absolute inset-0 z-50 pointer-events-none opacity-[0.05] grayscale" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='paperFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.04' numOctaves='5' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23paperFilter)'/%3E%3C/svg%3E")` }}></div>
         )}
+
+        {/* Background Image Layer */}
+        {renderBackgroundImage()}
 
         {/* Trendy Progress Bar */}
         <div className="absolute top-0 left-0 w-full h-1.5 bg-black/5 z-50">
@@ -1297,6 +1518,12 @@ function SlidePreview({ slide, index, totalSlides, onUpdate, aspectRatio }: { sl
           <div className="w-4 h-[1px] bg-white"></div>
           <span className="font-sans text-[10px] font-medium tracking-[0.2em]">{String(totalSlides).padStart(2, '0')}</span>
         </div>
+
+        {/* Custom Accent Icon Layer */}
+        {renderCustomAccent()}
+
+        {/* Foreground Image Layer */}
+        {renderForegroundImage()}
 
         {/* Layout Library Modal */}
         {isLayoutModalOpen && (
@@ -1638,6 +1865,268 @@ function SlidePreview({ slide, index, totalSlides, onUpdate, aspectRatio }: { sl
                       className="w-full accent-brand-green"
                     />
                     <p className="text-[9px] text-brand-dark/40 mt-1">Adjust this if text is overflowing the card.</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase text-brand-dark/50 mb-2">Overflow Handling</label>
+                    <div className="flex gap-2">
+                      {(['auto-scale', 'truncate', 'none'] as const).map(mode => (
+                        <button
+                          key={mode}
+                          onClick={() => onUpdate({ overflowHandling: mode })}
+                          className={`flex-1 py-1.5 px-2 text-[10px] font-bold uppercase rounded-md border transition-colors ${
+                            (slide.overflowHandling || 'auto-scale') === mode
+                              ? 'bg-brand-dark text-white border-brand-dark'
+                              : 'bg-white text-brand-dark/70 border-brand-dark/20 hover:border-brand-dark/40'
+                          }`}
+                        >
+                          {mode.replace('-', ' ')}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Advanced Image Layers Section */}
+                  <div className="col-span-2 pt-4 border-t border-brand-dark/10">
+                    <label className="block text-[10px] font-bold uppercase text-brand-dark/50 mb-3">Advanced Image Layers</label>
+                    
+                    <div className="grid grid-cols-2 gap-6">
+                      {/* Background Image Control */}
+                      <div className="space-y-3">
+                        <div className="flex justify-between items-center">
+                          <label className="text-[10px] font-bold uppercase text-brand-dark/40">Background Layer</label>
+                          <div className="flex gap-1">
+                            <button 
+                              onClick={() => bgFileInputRef.current?.click()}
+                              className="text-[9px] bg-brand-dark/5 hover:bg-brand-dark/10 px-2 py-0.5 rounded transition-colors"
+                            >
+                              {slide.bgImage ? 'Replace' : 'Upload'}
+                            </button>
+                            {slide.bgImage && (
+                              <button 
+                                onClick={() => onUpdate({ bgImage: undefined })}
+                                className="text-[9px] bg-red-50 text-red-500 hover:bg-red-100 px-2 py-0.5 rounded transition-colors"
+                              >
+                                Clear
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {slide.bgImage && (
+                          <div className="space-y-3 pt-2">
+                             <div>
+                              <div className="flex justify-between items-center mb-1">
+                                <label className="text-[9px] font-bold text-brand-dark/30 uppercase">Scale</label>
+                                <span className="text-[9px] font-mono text-brand-dark/30">{Math.round((slide.bgImageScale || 1) * 100)}%</span>
+                              </div>
+                              <input 
+                                type="range" min="0.1" max="3" step="0.1"
+                                value={slide.bgImageScale || 1}
+                                onChange={e => onUpdate({ bgImageScale: parseFloat(e.target.value) })}
+                                className="w-full h-1 accent-brand-dark/20"
+                              />
+                            </div>
+                            <div>
+                              <div className="flex justify-between items-center mb-1">
+                                <label className="text-[9px] font-bold text-brand-dark/30 uppercase">Opacity</label>
+                                <span className="text-[9px] font-mono text-brand-dark/30">{Math.round((slide.bgImageOpacity ?? 1) * 100)}%</span>
+                              </div>
+                              <input 
+                                type="range" min="0" max="1" step="0.05"
+                                value={slide.bgImageOpacity ?? 1}
+                                onChange={e => onUpdate({ bgImageOpacity: parseFloat(e.target.value) })}
+                                className="w-full h-1 accent-brand-dark/20"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Foreground Image Control */}
+                      <div className="space-y-3 border-l border-brand-dark/5 pl-6">
+                        <div className="flex justify-between items-center">
+                          <label className="text-[10px] font-bold uppercase text-brand-dark/40">Foreground Layer</label>
+                          <div className="flex gap-1">
+                            <button 
+                              onClick={() => fgFileInputRef.current?.click()}
+                              className="text-[9px] bg-brand-dark/5 hover:bg-brand-dark/10 px-2 py-0.5 rounded transition-colors"
+                            >
+                              {slide.fgImage ? 'Replace' : 'Upload'}
+                            </button>
+                            {slide.fgImage && (
+                              <button 
+                                onClick={() => onUpdate({ fgImage: undefined })}
+                                className="text-[9px] bg-red-50 text-red-500 hover:bg-red-100 px-2 py-0.5 rounded transition-colors"
+                              >
+                                Clear
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {slide.fgImage && (
+                          <div className="space-y-3 pt-2">
+                            <div>
+                              <div className="flex justify-between items-center mb-1">
+                                <label className="text-[9px] font-bold text-brand-dark/30 uppercase">Scale</label>
+                                <span className="text-[9px] font-mono text-brand-dark/30">{Math.round((slide.fgImageScale || 1) * 100)}%</span>
+                              </div>
+                              <input 
+                                type="range" min="0.1" max="2" step="0.05"
+                                value={slide.fgImageScale || 1}
+                                onChange={e => onUpdate({ fgImageScale: parseFloat(e.target.value) })}
+                                className="w-full h-1 accent-brand-dark/20"
+                              />
+                            </div>
+                            <div>
+                              <div className="flex justify-between items-center mb-1">
+                                <label className="text-[9px] font-bold text-brand-dark/30 uppercase">X Position</label>
+                                <span className="text-[9px] font-mono text-brand-dark/30">{Math.round(slide.fgImageX ?? 50)}%</span>
+                              </div>
+                              <input 
+                                type="range" min="-20" max="120" step="1"
+                                value={slide.fgImageX ?? 50}
+                                onChange={e => onUpdate({ fgImageX: parseInt(e.target.value) })}
+                                className="w-full h-1 accent-brand-dark/20"
+                              />
+                            </div>
+                            <div>
+                              <div className="flex justify-between items-center mb-1">
+                                <label className="text-[9px] font-bold text-brand-dark/30 uppercase">Y Position</label>
+                                <span className="text-[9px] font-mono text-brand-dark/30">{Math.round(slide.fgImageY ?? 50)}%</span>
+                              </div>
+                              <input 
+                                type="range" min="-20" max="120" step="1"
+                                value={slide.fgImageY ?? 50}
+                                onChange={e => onUpdate({ fgImageY: parseInt(e.target.value) })}
+                                className="w-full h-1 accent-brand-dark/20"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Accent Icon Section */}
+                  <div className="col-span-2 pt-4 border-t border-brand-dark/10">
+                    <label className="block text-[10px] font-bold uppercase text-brand-dark/50 mb-3">Custom Accent Icon</label>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[10px] font-bold uppercase text-brand-dark/40 mb-1">Select Icon</label>
+                        <select 
+                          value={slide.accentIcon || 'none'} 
+                          onChange={e => onUpdate({ accentIcon: e.target.value as any })} 
+                          className="w-full border border-brand-dark/20 rounded p-2 text-sm focus:ring-1 focus:ring-brand-green outline-none bg-white"
+                        >
+                          <option value="none">None</option>
+                          {NZ_ACCENTS.map(acc => (
+                            <option key={acc.id} value={acc.id}>{acc.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      {slide.accentIcon && slide.accentIcon !== 'none' && (
+                        <div>
+                          <div className="flex justify-between items-center mb-1">
+                            <label className="block text-[10px] font-bold uppercase text-brand-dark/40">Color</label>
+                            {slide.accentColor && (
+                              <button 
+                                onClick={() => onUpdate({ accentColor: undefined })}
+                                className="text-[9px] text-brand-green font-bold uppercase hover:underline"
+                              >
+                                Reset
+                              </button>
+                            )}
+                          </div>
+                          <input 
+                            type="color" 
+                            value={slide.accentColor || '#000000'} 
+                            onChange={e => onUpdate({ accentColor: e.target.value })} 
+                            className="w-full h-9 p-1 bg-white border border-brand-dark/20 rounded cursor-pointer"
+                          />
+                        </div>
+                      )}
+                    </div>
+                    
+                    {slide.accentIcon && slide.accentIcon !== 'none' && (
+                      <div className="grid grid-cols-2 gap-x-6 gap-y-3 mt-4">
+                        <div className="flex gap-2 items-end">
+                          <button
+                            onClick={() => onUpdate({ accentFlipX: !slide.accentFlipX })}
+                            className={`flex-1 py-1 px-2 text-[9px] font-bold uppercase rounded border transition-colors ${slide.accentFlipX ? 'bg-brand-dark text-white border-brand-dark' : 'bg-white text-brand-dark border-brand-dark/20 hover:border-brand-dark/40'}`}
+                          >
+                            Flip X
+                          </button>
+                          <button
+                            onClick={() => onUpdate({ accentFlipY: !slide.accentFlipY })}
+                            className={`flex-1 py-1 px-2 text-[9px] font-bold uppercase rounded border transition-colors ${slide.accentFlipY ? 'bg-brand-dark text-white border-brand-dark' : 'bg-white text-brand-dark border-brand-dark/20 hover:border-brand-dark/40'}`}
+                          >
+                            Flip Y
+                          </button>
+                        </div>
+                        <div>
+                          <div className="flex justify-between items-center mb-1">
+                            <label className="text-[10px] font-bold uppercase text-brand-dark/40">Rotation</label>
+                            <span className="text-[9px] font-mono text-brand-dark/40">{slide.accentRotation ?? 0}°</span>
+                          </div>
+                          <input 
+                            type="range" min="0" max="360" step="5"
+                            value={slide.accentRotation ?? 0}
+                            onChange={e => onUpdate({ accentRotation: parseInt(e.target.value) })}
+                            className="w-full h-1.5 accent-brand-green"
+                          />
+                        </div>
+                        <div>
+                          <div className="flex justify-between items-center mb-1">
+                            <label className="text-[10px] font-bold uppercase text-brand-dark/40">Size</label>
+                            <span className="text-[9px] font-mono text-brand-dark/40">{Math.round((slide.accentSize || 1) * 100)}%</span>
+                          </div>
+                          <input 
+                            type="range" min="0.2" max="3" step="0.1"
+                            value={slide.accentSize || 1}
+                            onChange={e => onUpdate({ accentSize: parseFloat(e.target.value) })}
+                            className="w-full h-1.5 accent-brand-green"
+                          />
+                        </div>
+                        <div>
+                          <div className="flex justify-between items-center mb-1">
+                            <label className="text-[10px] font-bold uppercase text-brand-dark/40">Opacity</label>
+                            <span className="text-[9px] font-mono text-brand-dark/40">{Math.round((slide.accentOpacity ?? 0.2) * 100)}%</span>
+                          </div>
+                          <input 
+                            type="range" min="0" max="1" step="0.05"
+                            value={slide.accentOpacity ?? 0.2}
+                            onChange={e => onUpdate({ accentOpacity: parseFloat(e.target.value) })}
+                            className="w-full h-1.5 accent-brand-green"
+                          />
+                        </div>
+                        <div>
+                          <div className="flex justify-between items-center mb-1">
+                            <label className="text-[10px] font-bold uppercase text-brand-dark/40">X Position</label>
+                            <span className="text-[9px] font-mono text-brand-dark/40">{Math.round(slide.accentX ?? 85)}%</span>
+                          </div>
+                          <input 
+                            type="range" min="-20" max="120" step="1"
+                            value={slide.accentX ?? 85}
+                            onChange={e => onUpdate({ accentX: parseInt(e.target.value) })}
+                            className="w-full h-1.5 accent-brand-green"
+                          />
+                        </div>
+                        <div>
+                          <div className="flex justify-between items-center mb-1">
+                            <label className="text-[10px] font-bold uppercase text-brand-dark/40">Y Position</label>
+                            <span className="text-[9px] font-mono text-brand-dark/40">{Math.round(slide.accentY ?? 15)}%</span>
+                          </div>
+                          <input 
+                            type="range" min="-20" max="120" step="1"
+                            value={slide.accentY ?? 15}
+                            onChange={e => onUpdate({ accentY: parseInt(e.target.value) })}
+                            className="w-full h-1.5 accent-brand-green"
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

@@ -65,3 +65,24 @@
 .slide-export-target .title-shadow {
   text-shadow: var(--title-outline, none);
 }
+
+/* Truncate Mode */
+.slide-export-target.overflow-mode-truncate h1,
+.slide-export-target.overflow-mode-truncate h2,
+.slide-export-target.overflow-mode-truncate h3,
+.slide-export-target.overflow-mode-truncate h4,
+.slide-export-target.overflow-mode-truncate p,
+.slide-export-target.overflow-mode-truncate span {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5; /* Default max lines for paragraphs */
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.slide-export-target.overflow-mode-truncate h1,
+.slide-export-target.overflow-mode-truncate h2,
+.slide-export-target.overflow-mode-truncate h3,
+.slide-export-target.overflow-mode-truncate h4 {
+  -webkit-line-clamp: 3; /* Tighter clamp for headings */
+}

@@ -89,3 +89,39 @@ export const OrganicBlob = ({ className, ...props }: React.SVGProps<SVGSVGElemen
     <path d="M75.5,21.5C84.5,30.5,88.5,45.5,84.5,58.5C80.5,71.5,68.5,82.5,54.5,85.5C40.5,88.5,24.5,83.5,15.5,71.5C6.5,59.5,4.5,40.5,11.5,27.5C18.5,14.5,34.5,7.5,49.5,8.5C64.5,9.5,66.5,12.5,75.5,21.5Z" />
   </svg>
 );
+
+export const Pohutukawa = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className={className} {...props}>
+    <circle cx="50" cy="50" r="10" fill="currentColor" stroke="none" />
+    {Array.from({ length: 16 }).map((_, i) => {
+      const angle = (i * 360) / 16;
+      const x2 = 50 + 35 * Math.cos((angle * Math.PI) / 180);
+      const y2 = 50 + 35 * Math.sin((angle * Math.PI) / 180);
+      return <line key={i} x1="50" y1="50" x2={x2} y2={y2} />;
+    })}
+    {Array.from({ length: 16 }).map((_, i) => {
+      const angle = (i * 360) / 16 + 11.25;
+      const x2 = 50 + 25 * Math.cos((angle * Math.PI) / 180);
+      const y2 = 50 + 25 * Math.sin((angle * Math.PI) / 180);
+      return <line key={`s-${i}`} x1="50" y1="50" x2={x2} y2={y2} strokeWidth="2" />;
+    })}
+  </svg>
+);
+
+export const Tui = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+    <path d="M20 60 C 20 40, 40 30, 60 40 C 80 50, 90 40, 95 30" />
+    <path d="M60 40 C 70 50, 70 70, 50 80 C 30 90, 10 80, 20 60" />
+    <path d="M20 60 L 10 55" />
+    <circle cx="28" cy="52" r="4" fill="white" stroke="none" />
+    <circle cx="35" cy="45" r="2" fill="currentColor" stroke="none" />
+  </svg>
+);
+
+export const Kauri = ({ className, ...props }: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 100 100" fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+    <path d="M40 95 L 40 40 Q 40 20 50 20 Q 60 20 60 40 L 60 95" fill="currentColor" fillOpacity="0.2" />
+    <path d="M20 45 C 20 20, 40 10, 50 10 C 60 10, 80 20, 80 45 C 80 60, 65 70, 50 70 C 35 70, 20 60, 20 45 Z" />
+    <path d="M50 70 L 50 95" strokeWidth="8" />
+  </svg>
+);
