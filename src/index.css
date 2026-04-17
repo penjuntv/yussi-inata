@@ -1,10 +1,17 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Roboto:wght@300;400;500;700&family=Montserrat:wght@400;500;600;700&family=Oswald:wght@400;500;600&family=Lora:ital,wght@0,400;0,600;1,400&family=Lato:wght@300;400;700;900&family=Bebas+Neue&family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&display=swap');
 @import "tailwindcss";
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Playfair Display", ui-serif, Georgia, serif;
+  --font-roboto: "Roboto", ui-sans-serif, system-ui, sans-serif;
+  --font-montserrat: "Montserrat", ui-sans-serif, system-ui, sans-serif;
+  --font-oswald: "Oswald", ui-sans-serif, system-ui, sans-serif;
+  --font-lora: "Lora", ui-serif, Georgia, serif;
+  --font-lato: "Lato", ui-sans-serif, system-ui, sans-serif;
+  --font-bebas: "Bebas Neue", cursive;
+  --font-newsreader: "Newsreader", serif;
   
   /* MHJ.NZ Brand Colors (App UI) */
   --color-brand-beige: #F4F1EA;
@@ -27,6 +34,13 @@
   --color-bold-yellow: #E5A937;
 }
 
+/* Professional Editor Grid Background */
+.bg-editor-grid {
+  background-color: #F8F9FA;
+  background-image: radial-gradient(#2c2c2c10 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
 /* Custom Scrollbar for Editor Modals */
 ::-webkit-scrollbar {
   width: 6px;
@@ -44,18 +58,46 @@
 }
 
 /* Text Scaling for Slide Export Target */
-.slide-export-target .text-5xl { font-size: calc(3rem * var(--text-scale, 1)) !important; line-height: calc(1 * var(--text-scale, 1)) !important; }
-.slide-export-target .text-4xl { font-size: calc(2.25rem * var(--text-scale, 1)) !important; line-height: calc(2.5rem * var(--text-scale, 1)) !important; }
-.slide-export-target .text-3xl { font-size: calc(1.875rem * var(--text-scale, 1)) !important; line-height: calc(2.25rem * var(--text-scale, 1)) !important; }
-.slide-export-target .text-2xl { font-size: calc(1.5rem * var(--text-scale, 1)) !important; line-height: calc(2rem * var(--text-scale, 1)) !important; }
-.slide-export-target .text-xl { font-size: calc(1.25rem * var(--text-scale, 1)) !important; line-height: calc(1.75rem * var(--text-scale, 1)) !important; }
-.slide-export-target .text-lg { font-size: calc(1.125rem * var(--text-scale, 1)) !important; line-height: calc(1.75rem * var(--text-scale, 1)) !important; }
-.slide-export-target .text-base { font-size: calc(1rem * var(--text-scale, 1)) !important; line-height: calc(1.5rem * var(--text-scale, 1)) !important; }
-.slide-export-target .text-sm { font-size: calc(0.875rem * var(--text-scale, 1)) !important; line-height: calc(1.25rem * var(--text-scale, 1)) !important; }
-.slide-export-target .text-xs { font-size: calc(0.75rem * var(--text-scale, 1)) !important; line-height: calc(1rem * var(--text-scale, 1)) !important; }
-.slide-export-target .text-\[10px\] { font-size: calc(10px * var(--text-scale, 1)) !important; line-height: calc(14px * var(--text-scale, 1)) !important; }
-.slide-export-target .text-\[9px\] { font-size: calc(9px * var(--text-scale, 1)) !important; line-height: calc(12px * var(--text-scale, 1)) !important; }
-.slide-export-target .text-\[8px\] { font-size: calc(8px * var(--text-scale, 1)) !important; line-height: calc(10px * var(--text-scale, 1)) !important; }
+/* Base size increased by 20% by default via the 1.2 multiplier multiplier */
+.slide-export-target .text-9xl { font-size: calc(8rem * 1.2 * var(--text-scale, 1)) !important; line-height: calc(1 * var(--text-scale, 1)) !important; }
+.slide-export-target .text-8xl { font-size: calc(6rem * 1.2 * var(--text-scale, 1)) !important; line-height: calc(1 * var(--text-scale, 1)) !important; }
+.slide-export-target .text-7xl { font-size: calc(4.5rem * 1.2 * var(--text-scale, 1)) !important; line-height: calc(1 * var(--text-scale, 1)) !important; }
+.slide-export-target .text-6xl { font-size: calc(3.75rem * 1.2 * var(--text-scale, 1)) !important; line-height: calc(1 * var(--text-scale, 1)) !important; }
+.slide-export-target .text-5xl { font-size: calc(3rem * 1.2 * var(--text-scale, 1)) !important; line-height: calc(1 * var(--text-scale, 1)) !important; }
+.slide-export-target .text-4xl { font-size: calc(2.25rem * 1.2 * var(--text-scale, 1)) !important; line-height: calc(2.5rem * var(--text-scale, 1)) !important; }
+.slide-export-target .text-3xl { font-size: calc(1.875rem * 1.2 * var(--text-scale, 1)) !important; line-height: calc(2.25rem * var(--text-scale, 1)) !important; }
+.slide-export-target .text-2xl { font-size: calc(1.5rem * 1.2 * var(--text-scale, 1)) !important; line-height: calc(2rem * var(--text-scale, 1)) !important; }
+.slide-export-target .text-xl { font-size: calc(1.25rem * 1.2 * var(--text-scale, 1)) !important; line-height: calc(1.75rem * var(--text-scale, 1)) !important; }
+.slide-export-target .text-lg { font-size: calc(1.125rem * 1.2 * var(--text-scale, 1)) !important; line-height: calc(1.75rem * var(--text-scale, 1)) !important; }
+.slide-export-target .text-base { font-size: calc(1rem * 1.2 * var(--text-scale, 1)) !important; line-height: calc(1.5rem * var(--text-scale, 1)) !important; }
+.slide-export-target .text-sm { font-size: calc(0.875rem * 1.2 * var(--text-scale, 1)) !important; line-height: calc(1.25rem * var(--text-scale, 1)) !important; }
+.slide-export-target .text-xs { font-size: calc(0.75rem * 1.2 * var(--text-scale, 1)) !important; line-height: calc(1rem * var(--text-scale, 1)) !important; }
+
+/* Line Heights */
+.slide-export-target .leading-none { line-height: 1 !important; }
+.slide-export-target .leading-tight { line-height: calc(1.25 * var(--text-scale, 1)) !important; }
+.slide-export-target .leading-snug { line-height: calc(1.375 * var(--text-scale, 1)) !important; }
+.slide-export-target .leading-normal { line-height: calc(1.5 * var(--text-scale, 1)) !important; }
+.slide-export-target .leading-relaxed { line-height: calc(1.625 * var(--text-scale, 1)) !important; }
+.slide-export-target .leading-loose { line-height: calc(2 * var(--text-scale, 1)) !important; }
+
+/* Custom Arbitrary Sizes Scaling */
+.slide-export-target .text-\[100px\] { font-size: calc(100px * 1.2 * var(--text-scale, 1)) !important; line-height: 1 !important; }
+.slide-export-target .text-\[40px\] { font-size: calc(40px * 1.2 * var(--text-scale, 1)) !important; }
+.slide-export-target .text-\[36px\] { font-size: calc(36px * 1.2 * var(--text-scale, 1)) !important; }
+.slide-export-target .text-\[24px\] { font-size: calc(24px * 1.2 * var(--text-scale, 1)) !important; }
+.slide-export-target .text-\[22px\] { font-size: calc(22px * 1.2 * var(--text-scale, 1)) !important; }
+.slide-export-target .text-\[19px\] { font-size: calc(19px * 1.2 * var(--text-scale, 1)) !important; }
+.slide-export-target .text-\[17px\] { font-size: calc(17px * 1.2 * var(--text-scale, 1)) !important; }
+.slide-export-target .text-\[16px\] { font-size: calc(16px * 1.2 * var(--text-scale, 1)) !important; }
+.slide-export-target .text-\[15px\] { font-size: calc(15px * 1.2 * var(--text-scale, 1)) !important; }
+.slide-export-target .text-\[14px\] { font-size: calc(14px * 1.2 * var(--text-scale, 1)) !important; }
+.slide-export-target .text-\[13px\] { font-size: calc(13px * 1.2 * var(--text-scale, 1)) !important; }
+.slide-export-target .text-\[12px\] { font-size: calc(12px * 1.2 * var(--text-scale, 1)) !important; }
+.slide-export-target .text-\[11px\] { font-size: calc(11px * 1.2 * var(--text-scale, 1)) !important; }
+.slide-export-target .text-\[10px\] { font-size: calc(10px * 1.2 * var(--text-scale, 1)) !important; line-height: calc(14px * var(--text-scale, 1)) !important; }
+.slide-export-target .text-\[9px\] { font-size: calc(9px * 1.2 * var(--text-scale, 1)) !important; line-height: calc(12px * var(--text-scale, 1)) !important; }
+.slide-export-target .text-\[8px\] { font-size: calc(8px * 1.2 * var(--text-scale, 1)) !important; line-height: calc(10px * var(--text-scale, 1)) !important; }
 
 /* Apply text shadow only to titles and subtitles, not the whole card */
 .slide-export-target h1,
